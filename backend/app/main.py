@@ -4,7 +4,12 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.catalog import router as catalog_router
 from app.api.health import router as health_router
+from app.api.inventory import router as inventory_router
+from app.api.merchants import router as merchants_router
+from app.api.products import router as products_router
+from app.api.relationships import router as relationships_router
 from app.core.config import settings
 from app.core.exceptions import (
     AppException,
@@ -26,8 +31,9 @@ app = FastAPI(
     title=settings.APP_NAME,
     description=(
         "Production-oriented AI-native commerce platform backend designed to make "
-        "merchants transactable by AI buyers. Features scalable health endpoints, "
-        "centralized configuration, structured logging, and robust exception handling."
+        "merchants transactable by AI buyers. Features merchant catalog management, "
+        "inventory tracking, cross-sell recommendation relationships, and structured "
+        "AI-readable catalog endpoints."
     ),
     version=settings.APP_VERSION,
     docs_url="/docs",
@@ -52,3 +58,10 @@ app.add_exception_handler(Exception, generic_exception_handler)
 # Include Routers
 app.include_router(health_router)
 app.include_router(health_router, prefix="/api/v1")
+
+# Milestone 2 Commerce Routers
+app.include_router(merchants_router, prefix="/api")
+app.include_router(products_router, prefix="/api")
+app.include_router(inventory_router, prefix="/api")
+app.include_router(relationships_router, prefix="/api")
+app.include_router(catalog_router, prefix="/api")
