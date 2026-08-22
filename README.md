@@ -112,6 +112,7 @@ agentcart/
 │   └── package.json
 ├── docs/                     # Architecture, Pitch & Demo documentation
 ├── render.yaml               # 1-Click Render deployment configuration
+├── vercel.json               # Monorepo Vercel build configuration
 └── scripts/
     └── seed_data.py          # Demo merchant & product seed script
 ```
@@ -124,8 +125,10 @@ agentcart/
 ```bash
 cd backend
 python -m venv .venv
+
 # On Windows:
 .venv\Scripts\activate
+
 # On Linux/macOS:
 source .venv/bin/activate
 
@@ -147,11 +150,28 @@ npm run dev
 
 ---
 
-## 🔑 Demo Credentials
+## 🔑 Demo Credentials (DEMO ONLY — NOT PRODUCTION CREDENTIALS)
 
 - **Merchant Admin Login**: `admin@technest.demo`
 - **Password**: `Password123!`
 - **Demo Buyer ID**: `demo-buyer-001`
+
+---
+
+## ☁️ Production Deployment Guide
+
+### Deploying Backend on Render
+1. Create a **Web Service** on Render connected to this repository.
+2. Set **Root Directory**: `backend`
+3. Set **Build Command**: `pip install -r requirements.txt && alembic upgrade head && python ../scripts/seed_data.py`
+4. Set **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add Environment Variables from `backend/.env.example`.
+
+### Deploying Frontend on Vercel
+1. Create a Project on Vercel connected to this repository.
+2. Set **Root Directory**: `frontend` (or leave as root; `vercel.json` is provided).
+3. Set Environment Variable: `VITE_API_BASE_URL=https://<your-backend-api-domain>`
+4. Deploy. `vercel.json` automatically handles client-side SPA routing (`/merchant/*`, `/buyer`).
 
 ---
 
