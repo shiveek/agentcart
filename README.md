@@ -7,6 +7,16 @@ AgentCart is a production-oriented AI-native commerce infrastructure platform de
 
 ---
 
+## 🌐 Live Public Deployment Links
+
+- **Live Frontend Application (Vercel)**: [https://agentcart-frontend.vercel.app](https://agentcart-frontend.vercel.app)
+- **Live Backend API (Render / Railway)**: [https://agentcart-api.onrender.com](https://agentcart-api.onrender.com)
+- **API Health Endpoint**: [https://agentcart-api.onrender.com/health](https://agentcart-api.onrender.com/health)
+- **API Swagger Documentation**: [https://agentcart-api.onrender.com/docs](https://agentcart-api.onrender.com/docs)
+- **Razorpay Public Webhook Endpoint**: [https://agentcart-api.onrender.com/api/webhooks/razorpay](https://agentcart-api.onrender.com/api/webhooks/razorpay)
+
+---
+
 ## 🌟 Pitch & Problem Statement
 
 ### The Problem
@@ -30,12 +40,12 @@ AgentCart empowers merchants to publish AI-readable product catalogs, expose aut
 ## 🏗️ System Architecture
 
 ```
-[ AI Buyer / Client UI ]
-           │
-           │ 1. Conversational Intent & Tool Execution
-           ▼
+[ AI Buyer / Client UI (Vercel) ]
+                 │
+                 │ 1. Conversational Intent & Tool Execution (HTTPS)
+                 ▼
 ┌────────────────────────────────────────────────────────┐
-│                   FastAPI Backend                      │
+│             FastAPI Backend (Render / Railway)          │
 ├──────────────────────────┬─────────────────────────────┤
 │ Commerce Agent           │  Structured Tool Suite      │
 │ (Catalog & Cross-Sell)   │  (Catalog, Cart, Orders)    │
@@ -44,7 +54,7 @@ AgentCart empowers merchants to publish AI-readable product catalogs, expose aut
              │ 2. Tool Execution          │ 3. State Mutation
              ▼                            ▼
 ┌──────────────────────────┐   ┌──────────────────────────┐
-│ Pure Policy Engine       │   │ SQLAlchemy 2.0 / DB      │
+│ Pure Policy Engine       │   │ Managed PostgreSQL       │
 │ (ALLOW/APPROVAL/BLOCK)   │   │ (Merchants, Carts, Orders)│
 └────────────┬─────────────┘   └──────────┬───────────────┘
              │                            │
@@ -72,9 +82,10 @@ AgentCart empowers merchants to publish AI-readable product catalogs, expose aut
 
 ## 💻 Tech Stack
 
-- **Backend**: Python 3.12+, FastAPI, SQLAlchemy 2.0, PostgreSQL / SQLite Fallback, Alembic, Pydantic v2, PyJWT, Argon2 (`pwdlib`).
+- **Backend**: Python 3.12+, FastAPI, SQLAlchemy 2.0, PostgreSQL, Alembic, Pydantic v2, PyJWT, Argon2 (`pwdlib`).
 - **Payments**: Razorpay Python SDK (`razorpay`), HMAC-SHA256 Webhook & Payment Callback verification.
 - **Frontend**: React 18, Vite 6, Tailwind CSS v4, Lucide React, Axios, React Router DOM v6.
+- **Deployment**: Vercel (Frontend SPA), Render / Railway (Backend API), Managed PostgreSQL.
 
 ---
 
@@ -96,18 +107,11 @@ agentcart/
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
-│   ├── src/
-│   │   ├── components/       # Layout & common UI components
-│   │   ├── context/          # AuthContext & BuyerContext
-│   │   ├── pages/            # Merchant Dashboard & AI Buyer pages
-│   │   ├── services/         # Axios API service client
-│   │   └── routes/           # AppRoutes
-│   ├── index.html
+│   ├── src/                  # React UI components & context providers
+│   ├── vercel.json           # Vercel SPA route rewrite rules
 │   └── package.json
-├── docs/
-│   ├── architecture/         # System, Agent, Safety & Payment architecture docs
-│   ├── demo/                 # Demo flow guide & pitch script
-│   └── screenshots/          # Platform screenshots
+├── docs/                     # Architecture, Pitch & Demo documentation
+├── render.yaml               # 1-Click Render deployment configuration
 └── scripts/
     └── seed_data.py          # Demo merchant & product seed script
 ```

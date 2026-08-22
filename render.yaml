@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: agentcart-backend
+    env: python
+    region: oregon
+    buildCommand: cd backend && pip install -r requirements.txt && alembic upgrade head && python ../scripts/seed_data.py
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: APP_NAME
+        value: AgentCart API
+      - key: APP_VERSION
+        value: 0.1.0
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: RAZORPAY_API_BASE_URL
+        value: https://api.razorpay.com/v1
