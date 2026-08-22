@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Read API Base URL from environment variable. Default to empty string for relative proxying in production
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -29,7 +30,7 @@ api.interceptors.response.use(
       // Clear invalid session if 401 Unauthorized
       localStorage.removeItem("agentcart_token");
       localStorage.removeItem("agentcart_user");
-      // Only redirect if not already on login or register pages
+      // Only redirect using relative route if not already on login or register pages
       if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
         window.location.href = "/login";
       }
