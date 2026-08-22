@@ -1,5 +1,6 @@
 import uuid
 
+
 def test_create_and_get_merchant(client):
     """Test merchant creation and retrieval endpoints."""
     payload = {
@@ -17,23 +18,38 @@ def test_create_and_get_merchant(client):
     assert "id" in data
     merchant_id = data["id"]
 
+    # Register & Login user for merchant
+    client.post(
+        "/api/auth/register",
+        json={
+            "email": "info@gadgetverse.com",
+            "password": "Password123!",
+            "role": "merchant_admin",
+            "merchant_id": merchant_id,
+        },
+    )
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "info@gadgetverse.com", "password": "Password123!"},
+    )
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+
     # Get merchant
-    get_res = client.get(f"/api/merchants/{merchant_id}")
+    get_res = client.get(f"/api/merchants/{merchant_id}", headers=headers)
     assert get_res.status_code == 200
     assert get_res.json()["name"] == "GadgetVerse"
 
     # Update merchant
-    update_res = client.put(f"/api/merchants/{merchant_id}", json={"name": "GadgetVerse Pro"})
+    update_res = client.put(f"/api/merchants/{merchant_id}", json={"name": "GadgetVerse Pro"}, headers=headers)
     assert update_res.status_code == 200
     assert update_res.json()["name"] == "GadgetVerse Pro"
 
 
 def test_merchant_not_found(client):
-    """Test retrieving non-existent merchant returns 404."""
+    """Test retrieving non-existent merchant returns unauthenticated 401."""
     random_id = str(uuid.uuid4())
     response = client.get(f"/api/merchants/{random_id}")
-    assert response.status_code == 404
-    assert response.json()["error"]["code"] == "NOT_FOUND"
+    assert response.status_code == 401
 
 
 def test_duplicate_merchant_email(client):

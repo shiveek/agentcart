@@ -2,10 +2,12 @@ import uuid
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_merchant
 from app.db.session import get_db
+from app.models.merchant import Merchant
 from app.schemas.product import (
     ProductCreate,
     ProductListResponse,
@@ -27,10 +29,16 @@ router = APIRouter(tags=["Products"])
 def create_product(
     merchant_id: uuid.UUID,
     product_in: ProductCreate,
+    current_merchant: Merchant = Depends(get_current_merchant),
     db: Session = Depends(get_db),
 ) -> ProductResponse:
-    """Create product endpoint."""
-    product = product_service.create_product(db, merchant_id, product_in)
+    """Create product endpoint with tenant isolation."""
+    if merchant_id != current_merchant.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Users cannot manage products for another merchant",
+        )
+    product = product_service.create_product(db, current_merchant.id, product_in)
     return ProductResponse.model_validate(product)
 
 
@@ -50,12 +58,18 @@ def list_products(
     max_price: Optional[Decimal] = Query(None, ge=0, description="Maximum price filter"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_merchant: Merchant = Depends(get_current_merchant),
     db: Session = Depends(get_db),
 ) -> ProductListResponse:
-    """List products endpoint."""
+    """List products endpoint with tenant isolation."""
+    if merchant_id != current_merchant.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Users cannot access another merchant's products",
+        )
     items, total, total_pages = product_service.list_products(
         db,
-        merchant_id=merchant_id,
+        merchant_id=current_merchant.id,
         search=search,
         category=category,
         is_active=is_active,
@@ -82,10 +96,17 @@ def list_products(
     description="Retrieves details for a single product by ID.",
 )
 def get_product(
-    product_id: uuid.UUID, db: Session = Depends(get_db)
+    product_id: uuid.UUID,
+    current_merchant: Merchant = Depends(get_current_merchant),
+    db: Session = Depends(get_db),
 ) -> ProductResponse:
-    """Get product endpoint."""
+    """Get product endpoint with tenant scoping."""
     product = product_service.get_product(db, product_id)
+    if product.merchant_id != current_merchant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
     return ProductResponse.model_validate(product)
 
 
@@ -99,11 +120,18 @@ def get_product(
 def update_product(
     product_id: uuid.UUID,
     product_in: ProductUpdate,
+    current_merchant: Merchant = Depends(get_current_merchant),
     db: Session = Depends(get_db),
 ) -> ProductResponse:
-    """Update product endpoint."""
-    product = product_service.update_product(db, product_id, product_in)
-    return ProductResponse.model_validate(product)
+    """Update product endpoint with tenant scoping."""
+    product = product_service.get_product(db, product_id)
+    if product.merchant_id != current_merchant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    updated = product_service.update_product(db, product_id, product_in)
+    return ProductResponse.model_validate(updated)
 
 
 @router.delete(
@@ -114,8 +142,16 @@ def update_product(
     description="Deactivates a product from active catalog listings.",
 )
 def delete_product(
-    product_id: uuid.UUID, db: Session = Depends(get_db)
+    product_id: uuid.UUID,
+    current_merchant: Merchant = Depends(get_current_merchant),
+    db: Session = Depends(get_db),
 ) -> ProductResponse:
-    """Delete/Deactivate product endpoint."""
-    product = product_service.delete_product(db, product_id)
-    return ProductResponse.model_validate(product)
+    """Delete/Deactivate product endpoint with tenant scoping."""
+    product = product_service.get_product(db, product_id)
+    if product.merchant_id != current_merchant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    deleted = product_service.delete_product(db, product_id)
+    return ProductResponse.model_validate(deleted)

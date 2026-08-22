@@ -18,7 +18,13 @@ class Settings(BaseSettings):
 
     RAZORPAY_KEY_ID: Union[str, None] = None
     RAZORPAY_KEY_SECRET: Union[str, None] = None
+    RAZORPAY_WEBHOOK_SECRET: Union[str, None] = None
+    RAZORPAY_API_BASE_URL: str = "https://api.razorpay.com/v1"
     LLM_API_KEY: Union[str, None] = None
+
+    JWT_SECRET_KEY: str = "agentcart_dev_secret_key_2026_change_in_production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     model_config = SettingsConfigDict(
         env_file=".env",

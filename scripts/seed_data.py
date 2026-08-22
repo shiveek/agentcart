@@ -5,20 +5,29 @@ from decimal import Decimal
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.security import hash_password
 from app.db.database import Base, engine
 from app.db.session import SessionLocal
+from app.models.buyer_policy import BuyerPolicy
+from app.models.merchant import Merchant
+from app.models.merchant_policy import MerchantPolicy
+from app.models.product import Product
+from app.models.user import User
+
 from app.schemas.merchant import MerchantCreate
 from app.schemas.product import ProductCreate
 from app.schemas.relationship import ProductRelationshipCreate
+from app.services.merchant_policy_service import get_merchant_policy
 from app.services.merchant_service import create_merchant
 from app.services.product_service import create_product
 from app.services.relationship_service import create_product_relationship
 
 
 def seed_database() -> None:
-    """Seed the database with TechNest demo merchant, products, and relationships."""
+    """Seed database with demo merchant TechNest, admin/staff users, policies, products, and relationships."""
     print("Initializing database tables...")
     Base.metadata.create_all(bind=engine)
 
@@ -36,10 +45,65 @@ def seed_database() -> None:
             merchant = create_merchant(db, merchant_in)
             print(f"[OK] Created Merchant: {merchant.name} (ID: {merchant.id})")
         except Exception:
-            from sqlalchemy import select
-            from app.models.merchant import Merchant
             merchant = db.execute(select(Merchant).where(Merchant.email == "contact@technest.io")).scalar_one()
             print(f"[INFO] Merchant '{merchant.name}' already exists (ID: {merchant.id}).")
+
+        print("\nSeeding demo merchant users...")
+        users_data = [
+            {
+                "email": "admin@technest.demo",
+                "password": "DemoAdmin123!",
+                "role": "merchant_admin",
+            },
+            {
+                "email": "staff@technest.demo",
+                "password": "DemoStaff123!",
+                "role": "merchant_staff",
+            },
+        ]
+
+        for u in users_data:
+            existing_user = db.execute(select(User).where(User.email == u["email"])).scalar_one_or_none()
+            if not existing_user:
+                user = User(
+                    email=u["email"],
+                    password_hash=hash_password(u["password"]),
+                    role=u["role"],
+                    merchant_id=merchant.id,
+                    is_active=True,
+                )
+                db.add(user)
+                db.commit()
+                print(f"  [OK] Created User: {u['email']} (Role: {u['role']}) [Password: {u['password']}]")
+            else:
+                print(f"  [INFO] User '{u['email']}' already exists.")
+
+        print("\nSeeding default merchant policy...")
+        policy = get_merchant_policy(db, merchant.id)
+        print(f"  [OK] Merchant Policy configured: max_tx={policy.max_transaction_amount}, max_disc={policy.max_discount_percent}%, threshold={policy.approval_threshold}")
+
+        print("\nSeeding demo buyer policy...")
+        existing_buyer_policy = db.execute(
+            select(BuyerPolicy).where(
+                BuyerPolicy.merchant_id == merchant.id,
+                BuyerPolicy.customer_identifier == "demo-buyer-001",
+            )
+        ).scalar_one_or_none()
+        if not existing_buyer_policy:
+            buyer_policy = BuyerPolicy(
+                merchant_id=merchant.id,
+                customer_identifier="demo-buyer-001",
+                max_transaction_amount=Decimal("5000.00"),
+                daily_spending_limit=Decimal("10000.00"),
+                require_confirmation_above=Decimal("2000.00"),
+                auto_pay_enabled=False,
+            )
+            db.add(buyer_policy)
+            db.commit()
+            print("  [OK] Created Buyer Policy for 'demo-buyer-001'")
+
+        else:
+            print("  [INFO] Buyer policy for 'demo-buyer-001' already exists.")
 
         print("\nSeeding products...")
         products_data = [
@@ -109,8 +173,6 @@ def seed_database() -> None:
                 created_products[p["sku"]] = prod
                 print(f"  [OK] Created Product: {prod.name} [{prod.sku}] - INR {prod.price} (Stock: {p['stock']})")
             except Exception:
-                from sqlalchemy import select
-                from app.models.product import Product
                 prod = db.execute(
                     select(Product).where(Product.merchant_id == merchant.id, Product.sku == p["sku"])
                 ).scalar_one()
@@ -159,10 +221,13 @@ def seed_database() -> None:
                 score=rel["score"],
                 reason=rel["reason"],
             )
-            created_rel = create_product_relationship(db, source.id, rel_in)
-            print(f"  [OK] Created Relationship: {source.name} -> {target.name} ({rel['type']} | score: {rel['score']})")
+            try:
+                created_rel = create_product_relationship(db, source.id, rel_in)
+                print(f"  [OK] Created Relationship: {source.name} -> {target.name} ({rel['type']} | score: {rel['score']})")
+            except Exception:
+                print(f"  [INFO] Relationship {source.name} -> {target.name} already exists.")
 
-        print(f"\nSuccessfully seeded demo data for Merchant '{merchant.name}' (ID: {merchant.id})!")
+        print(f"\nSuccessfully completed seeding for Merchant '{merchant.name}' (ID: {merchant.id})!")
 
     finally:
         db.close()

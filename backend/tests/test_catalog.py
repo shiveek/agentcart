@@ -3,30 +3,47 @@ import uuid
 
 def test_ai_catalog_and_search(client):
     """Test AI-readable catalog endpoint and deterministic search endpoint."""
+    email = f"aicatalog_{uuid.uuid4().hex[:6]}@example.com"
     m_res = client.post("/api/merchants", json={
         "name": "AI Catalog Store",
         "business_name": "AI Store Ltd",
-        "email": f"aicatalog_{uuid.uuid4().hex[:6]}@test.com",
+        "email": email,
     })
     m_id = m_res.json()["id"]
+
+    # Register & Login user for merchant auth
+    client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "Password123!",
+            "role": "merchant_admin",
+            "merchant_id": m_id,
+        },
+    )
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "Password123!"},
+    )
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     # Add products
     p1 = client.post(f"/api/merchants/{m_id}/products", json={
         "sku": "KB-01", "name": "Mechanical Keyboard", "description": "RGB Keyboard", "category": "Keyboards", "price": 2500.00, "initial_quantity": 30
-    }).json()
+    }, headers=headers).json()
 
     p2 = client.post(f"/api/merchants/{m_id}/products", json={
         "sku": "MS-01", "name": "Wireless Mouse", "description": "Silent Mouse", "category": "Mice", "price": 800.00, "initial_quantity": 0
-    }).json()
+    }, headers=headers).json()
 
     # Add relationship KB-01 -> MS-01
     client.post(f"/api/products/{p1['id']}/relationships", json={
         "target_product_id": p2["id"],
         "relationship_type": "cross_sell",
         "score": 0.90,
-    })
+    }, headers=headers)
 
-    # Test GET /api/agent/catalog/{merchant_id}
+    # Test GET /api/agent/catalog/{merchant_id} (public catalog endpoint)
     cat_res = client.get(f"/api/agent/catalog/{m_id}")
     assert cat_res.status_code == 200
     data = cat_res.json()
